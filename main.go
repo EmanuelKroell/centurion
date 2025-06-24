@@ -41,57 +41,16 @@ func main() {
 
 	program := initOpenGL()
 
-	stlread, err := obj.Decode("assets/Bamboo_House/Bambo_House.obj", "assets/Bamboo_House.mtl")
+	modelImport, err := obj.Decode("assets/Bamboo_House/Bambo_House.obj", "assets/Bamboo_House.mtl")
 	if err != nil {
 		panic(err)
 	}
 
-	objects := make([]object, 0, len(stlread.Objects))
+	objects := make([]object, 0, len(modelImport.Objects))
 
-	copyVertex := func(Vertices *math32.ArrayF32, Uvs *math32.ArrayF32, Normals *math32.ArrayF32, face *obj.Face, idx int) {
-		var vec2 math32.Vector2
-		var vec3 math32.Vector3
-
-		stlread.Vertices.GetVector3(3*face.Vertices[idx], &vec3)
-		Vertices.AppendVector3(&vec3)
-
-		if face.Normals[idx] != invINDEX {
-			stlread.Normals.GetVector3(3*face.Normals[idx], &vec3)
-			Normals.AppendVector3(&vec3)
-		}
-
-		if face.Uvs[idx] != invINDEX {
-			stlread.Vertices.GetVector2(2*face.Uvs[idx], &vec2)
-			Uvs.AppendVector2(&vec2)
-
-		}
-	}
-
-	for _, o := range stlread.Objects {
-		Vertices := math32.NewArrayF32(0, stlread.Vertices.Len())
-		Uvs := math32.NewArrayF32(0, stlread.Uvs.Len())
-		Normals := math32.NewArrayF32(0, stlread.Normals.Len())
-
-		for _, f := range o.Faces {
-			for idx := 1; idx < len(f.Vertices)-1; idx++ {
-				copyVertex(&Vertices, &Uvs, &Normals, &f, 0)
-				copyVertex(&Vertices, &Uvs, &Normals, &f, idx)
-				copyVertex(&Vertices, &Uvs, &Normals, &f, idx+1)
-			}
-
-		}
-
-		vao, vbo := makeVAO(Vertices)
-
-		object := object{
-			vao:      vao,
-			vbo:      vbo,
-			Vertices: Vertices,
-			Uvs:      Uvs,
-			Normals:  Normals,
-		}
-
-		objects = append(objects, object)
+	for _, o := range modelImport.Objects {
+		obj := makeObject(modelImport, &o)
+		objects = append(objects, obj)
 	}
 
 	scene := scene{
@@ -145,4 +104,48 @@ func initGlfw() *glfw.Window {
 	window.MakeContextCurrent()
 
 	return window
+}
+
+func makeObject(model *obj.Decoder, o *obj.Object) object {
+	Vertices := math32.NewArrayF32(0, model.Vertices.Len())
+	Uvs := math32.NewArrayF32(0, model.Uvs.Len())
+	Normals := math32.NewArrayF32(0, model.Normals.Len())
+
+	copyVertex := func(face *obj.Face, idx int) {
+		var vec2 math32.Vector2
+		var vec3 math32.Vector3
+
+		model.Vertices.GetVector3(3*face.Vertices[idx], &vec3)
+		Vertices.AppendVector3(&vec3)
+
+		if face.Normals[idx] != invINDEX {
+			model.Normals.GetVector3(3*face.Normals[idx], &vec3)
+			Normals.AppendVector3(&vec3)
+		}
+
+		if face.Uvs[idx] != invINDEX {
+			model.Vertices.GetVector2(2*face.Uvs[idx], &vec2)
+			Uvs.AppendVector2(&vec2)
+
+		}
+	}
+
+	for _, f := range o.Faces {
+		for idx := 1; idx < len(f.Vertices)-1; idx++ {
+			copyVertex(&f, 0)
+			copyVertex(&f, idx)
+			copyVertex(&f, idx+1)
+		}
+
+	}
+
+	vao, vbo := makeVAO(Vertices)
+
+	return object{
+		vao:      vao,
+		vbo:      vbo,
+		Vertices: Vertices,
+		Uvs:      Uvs,
+		Normals:  Normals,
+	}
 }
