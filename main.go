@@ -24,6 +24,9 @@ var (
 type object struct {
 	vao      uint32
 	vbo      uint32
+	position mgl32.Vec3
+	rotation mgl32.Vec3
+	scale    mgl32.Vec3
 	Vertices []float32
 	Uvs      []float32
 	Normals  []float32
